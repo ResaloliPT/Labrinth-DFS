@@ -1,0 +1,14 @@
+{
+  "name": "labrinth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "clear && ./node_modules/nodemon/bin/nodemon.js index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^1.18.4"
+  }
+}
