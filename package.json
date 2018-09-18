@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "clear && ./node_modules/nodemon/bin/nodemon.js index.js"
+    "test": "cls && ./node_modules/nodemon/bin/nodemon.js index.js"
   },
   "author": "",
   "license": "ISC",

@@ -1,298 +1,194 @@
 //Config
-const GridSize = 10;
+const GridSize = 10; //n by n Grid
+const drawWaitTime = 50; // Update Wait Timer (in ms)
+const allowCallStackDraw = false // Set to true to Draw the CallStack
+const charset = 1; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
-const alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "L", "K", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "X", "Y", "Z"]
-
-let callStack;
-
-let mazeDraw = [];
-
-
-
-
-
-
-
-/*
-Types:
-1 = Node
-2 = Leaf
-
-Directions:
-0 = None
-1 = down
-2 = top
-3 = left
-4 = right
-*/
-
-const LabrinthRecur = {
-	"type": 1, // Root Here
-	"dir": 0, // Cord
-	"visited": 0, // if cell was visited
-	"children": [
-		{
-			"type": 1,
-			"dir": 4,
-			"visited": 0, // if cell was visited
-			"children": [
-				{
-					"type": 1,
-					"dir": 1,
-					"visited": 0, // if cell was visited
-					"children": [
-						{
-							"type": 1,
-							"dir": 1,
-							"visited": 0, // if cell was visited
-							"children": [
-								{
-									"type": 1,
-									"dir": 4,
-									"visited": 0, // if cell was visited
-									"children": [
-
-									]
-								}
-							]
-						}
-					]
-				}
-			]
-		}
-	]
-}
-
-
-
-const labrinthSectorParts= {
-	topLines: " ---",
-	DownLines: " ---",
-	closedSides: "|   |",
-	leftSide: "|   ",
-	lastWall: "|",
-	root: "| R ",
-	destination: "",
-	arrowTop: "| ↑ ",
-	arrowDown: "| ↓ ",
-	arrowLeft: "| → ",
-	arrowRight: "| ← "
-
-};
-
-const labrinthSectorsTypes = [
-	{
-		type: 1, // Aberto Esquerda
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: labrinthSectorParts.DownLines,
-			sides: "    "
-		}
-	},
-	{
-		type: 2, // Aberto Direita
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: labrinthSectorParts.DownLines,
-			sides: labrinthSectorParts.leftSide
-		}
-
-	},
-	{
-		type: 3, // Aberto Cima
-		walls: {
-			top: "    ",
-			Down: labrinthSectorParts.DownLines,
-			sides: labrinthSectorParts.leftSide
-		}
-
-	},
-	{
-		type: 4, // Aberto Baixo
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: "    ",
-			sides: labrinthSectorParts.leftSide
-		}
-
-	},
-	{
-		type: 5, // Aberto Lados
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: labrinthSectorParts.DownLines,
-			sides: "    "
-		}
-
-	},
-	{
-		type: 6, // Aberto cima-esquerda
-		walls: {
-			top: "    ",
-			Down: labrinthSectorParts.DownLines,
-			sides: "   |"
-		}
-
-	},
-	{
-		type: 7, // Aberto baixo-direita
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: "    ",
-			sides: "   |"
-		}
-
-	},
-	{
-		type: 8, // Aberto lados-baixo
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: "    ",
-			sides: "~~~~"
-		}
-
-	},
-	{
-		type: 9, // Root
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: labrinthSectorParts.DownLines,
-			sides: labrinthSectorParts.root
-		}
-
-	},
-	{
-		type: 10, // Destination
-		walls: {
-			top: labrinthSectorParts.topLines,
-			Down: "    ",
-			sides: labrinthSectorParts.root
-		}
-
-	},
-];
+let visitedMap = []; // Keep Cache of Visted Cells
+let callStack = []; // CallStack itself
 
 const utils = {
-	getSectorType: function (type) {
-		for (let i = 0; i < labrinthSectorsTypes.length; i++) {
-			if (labrinthSectorsTypes[i].type == type) {
-				return labrinthSectorsTypes[i].walls;
-			}
-		}
-	},
-	getRandom: function(min, max) {
-		return Math.floor(Math.random() * max) + min;
+	getRandom: function(min, max) { // Generate random number from min to max INCLUSIVE
+		return Math.floor(Math.random() * max+1) + min;
 	},
 	getChildren: function (parent) {
+		let strBuild = "";
 		let children = [];
-		if (parent.x-1 >= 1) {
+		if (parent == undefined) { return []}
+
+		if (parent.x-1 >= 0 && visitedMap[parent.y] && visitedMap[parent.y][parent.x-1] == 0) {
 			children.push({
 				x: parent.x-1,
 				y: parent.y
 			});
+			strBuild += "W: "+visitedMap[parent.y][parent.x-1]+", "
 		}
-		if (parent.x+1 <= GridSize) {
+		if (parent.x+1 <= GridSize-1 && visitedMap[parent.y]  && visitedMap[parent.y][parent.x+1] == 0) {
 			children.push({
 				x: parent.x+1,
 				y: parent.y
 			});
+			strBuild += "E: "+visitedMap[parent.y][parent.x+1]+", "
 		}
-		if (parent.y-1 >= 1) {
+		if (parent.y-1 >= 0 && visitedMap[parent.y-1][parent.x] == 0) {
 			children.push({
 				x: parent.x,
 				y: parent.y-1
 			});
+			strBuild += "N: "+visitedMap[parent.y-1][parent.x]+", "
 		}
-		if (parent.y+1 <= GridSize) {
+		if (parent.y+1 <= GridSize-1 && visitedMap[parent.y+1][parent.x] == 0) {
 			children.push({
 				x: parent.x,
 				y: parent.y+1
 			});
+			strBuild += "S: "+visitedMap[parent.y+1][parent.x]+", "
 		}
+		//console.log(strBuild);
+		//console.log("Unvisited Neighbours:", children)
+
 		return children;
 	},
-	getRndChild: function(children) {
-		return getRandom(0, children.length-1);
+	getRndChild: function(parent) {
+		let children = utils.getChildren(parent);
+		let rndNum = utils.getRandom(0, children.length-1)
+		//console.log("rndNum:",rndNum);
+		return children.length == 1 ? children[0] : children[rndNum];
+	},
+	hasUnvisitedChilds: function (parent) {
+		let childs = utils.getChildren(parent);
+		if (childs.length > 0) {return true;}
+		return false;
 	}
 }
 
-function drawGrid(gridSize) {
-	let topDown = "";
-	let sides = "";
-	let letters = "";
-	for (let i = 0; i < gridSize; i++) {
-		topDown += labrinthSectorParts.topLines
+function drawLab(gridSize, currCoors) {
+	console.clear();
+	console.log("=====================");
+	console.log("Labrind Draw");
+	if(currCoors != undefined){
+		console.log("Next Position: X: "+currCoors.x+" Y: "+currCoors.y);
+	}else  {
+		console.log("!Maze Ended!")
 	}
-	topDown = "    " + topDown;
-	for (let i = 0; i < gridSize; i++) {
-		if (i == (gridSize-1)) {
-			sides += labrinthSectorParts.leftSide + "|   |"
-		}else if (i == 0) {
-			//sides +=  labrinthSectorParts.leftSide + "|"
-		} else {
-			sides += labrinthSectorParts.leftSide
+	
+	let strBuild = "";
+	for (var i = 0; i < gridSize; i++) {
+		for (var j = 0; j < gridSize; j++) {
+			if(visitedMap[i][j] == 2){
+				strBuild += charset == 0 ? "☼": "░";
+			}else if (visitedMap[i][j] == 1) {
+				strBuild += charset == 0 ? "▣": "▒";
+			}else{
+				strBuild += charset == 0 ? "■": "▓";
+			}
 		}
-		letters += "  " + alphabet[i] + " ";
+		strBuild += "\n";
+	}
+	console.log(strBuild);
+	
+
+	let stackStrBuild = "";
+	for (var i = callStack.length - 1; i >= 0; i--) {
+		stackStrBuild += callStack[i]+"\n"
 	}
 
-	letters = "    " + letters;
-	console.log(letters); // Draw Top Letters
-	console.log(topDown); // Draw Top Wall
-	for (let i = 0; i < gridSize; i++) {
-		if (i >= 9) {
-			console.log((" " + (i+1) + " ") + sides); // Draw Sector Side Walls
-		}else{
-			console.log((" " + (i+1) + "  ") + sides); // Draw Sector Side Walls
-		}
-		console.log(topDown); // Draw Walls inBetween Sectors
+	if (allowCallStackDraw) {
+		console.log("=====================");
+		console.log("CallStack Draw");
+		console.log(callStack);
 	}
+	
+	console.log("=====================\n");
 }
 
 function drawLabrinth(gridSize) {
-	const initCoords = {
-		x: utils.getRandom(1, gridSize),
-		y: utils.getRandom(1, gridSize)
+
+/*
+
+Pseudo-code (Source: Wikipedia)
+Make the initial cell the current cell and mark it as visited
+While there are unvisited cells
+	If the current cell has any neighbours which have not been visited
+		Choose randomly one of the unvisited neighbours
+		Push the current cell to the stack
+		Remove the wall between the current cell and the chosen cell
+		Make the chosen cell the current cell and mark it as visited
+	Else if stack is not empty
+		Pop a cell from the stack
+		Make it the current cell
+
+"Codie" Pseudo-Code
+var currCell = initalCell;
+while(unvisited){
+	if(currCell has unvisited Neighbours){
+		var rndNeihbour = some neighbour
+		callstack += rndNeihbour
+		removedoor between currCell and rndNeihbour
+		currCell = rndNeihbour
+	}else{
+		callstack.splice(length-1, 1)
+		currCell = callstack[length]
 	}
+}
+*/
 
-	console.log("Starting Point:", "Y:", "("+initCoords.y+")", "X:", "("+alphabet[initCoords.x-1]+")\n");
+	const initCoords = {
+		x: utils.getRandom(0, gridSize-1),
+		y: utils.getRandom(0, gridSize-1)
+	}
+	callStack[callStack.length] = initCoords;
+	let unvisitedNeighbours = true;
+	let currCoors = initCoords;
+	let canShutdown = false;
+	let intervalID;
+	let lastRun = false;
+	intervalID = setInterval(function () { // Use Interval just to change speed of update (Better Drawings!! :D )
+		drawLab(gridSize, currCoors);
+		//console.log(currCoors)
+		//console.log("Starting Point:", "Y:", "("+currCoors.y+")", "X:", "("+alphabet[currCoors.x-1]+") ("+currCoors.x+")\n");
+		//console.log(visitedMap)
+		if(utils.hasUnvisitedChilds(currCoors)){
+			var rndNeighbour = utils.getRndChild(currCoors);
+			//console.log("Selected Child Point:", "Y:", "("+rndNeighbour.y+")", "X:", "("+alphabet[rndNeighbour.x-1]+") ("+rndNeighbour.x+")\n");
+			callStack[callStack.length] = rndNeighbour;
+			visitedMap[currCoors.y][currCoors.x] = 1;
+			//console.log("Cell Value:",visitedMap[currCoors.y][currCoors.x])
+			currCoors = rndNeighbour;
+		}else{
+			//console.log("Going Back!");
+			callStack.splice(callStack.length-1, 1);
+			if (currCoors != undefined) {
+				visitedMap[currCoors.y][currCoors.x] = 2;
+			}
+			currCoors = callStack[callStack.length-1];
 
-	let mazeGenerated = false;
-	let counter = 0;
-	while (!mazeGenerated) {
-		let children = utils.getChildren(initCoords);
-		let parent = counter == 0 ? undefined : counter-1;
-
-		mazeDraw.push({
-			id: counter,
-			parent: parent,
-			children: children
-		});
-
-
-		for (var i = 0; i < children.length; i++) {
-			console.log("Child Point:", "Y:", "("+children[i].y+")", "X:", "("+alphabet[children[i].x-1]+")\n");
+		}
+		if(lastRun){
+			clearInterval(intervalID);
+			return;
+		}
+		if(canShutdown && callStack.length == 0){
+			lastRun = true;
 		}
 
-
-		counter++;
-		mazeGenerated = true;
-	}
-
-
+		canShutdown = true;
+	}, drawWaitTime);
 }
 
 
-function drawAll(gridSize) {
-	if (gridSize > alphabet.length) {
-		console.log("Grid Size to Big max is ", alphabet.length);
-		return;
+function prepareVars(gridSize) {
+	for (var i = 0; i < gridSize; i++) {
+		visitedMap[i] = [];
+		for (var j = 0; j < gridSize; j++) {
+			visitedMap[i][j] = 0;
+		}
 	}
-	console.log("======== Drawing Basic Grid ========\n");
-	drawGrid(gridSize);
-	console.log("\n======== Basic Grid Labrinth ========\n");
-	console.log("R = Root");
-	console.log("E = Exit\n")
+}
+
+function runMaze (gridSize) {
+	prepareVars(gridSize);
 	drawLabrinth(gridSize);
 }
-drawAll(GridSize); // Draw Grid 6 by 6
+runMaze(GridSize);
