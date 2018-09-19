@@ -1,12 +1,35 @@
 //Config
-const GridSize = 10; //n by n Grid
+const GridSize = 5; //n by n Grid
 const drawWaitTime = 50; // Update Wait Timer (in ms)
-const allowCallStackDraw = false // Set to true to Draw the CallStack
-const charset = 1; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
+const allowCallStackDraw = false; // Set to true to Draw the CallStack
+const charset = 0; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
 let visitedMap = []; // Keep Cache of Visted Cells
 let callStack = []; // CallStack itself
+let DFSTree = [[]]; // Contains the tree
+
+/*
+	DFS Tree Struct
+
+	[{ 
+		"id": 0, // Cell ID
+		"parent": null, // Cell Parent
+		"x": 0000, // Cell x Coordinates
+		"y": 0000, // Cell y Coordinates
+		"childs": [ ... ] // Cell Children
+	},
+	...]
+*/
+
+const labrinthSectorParts= {
+	 horonzontal: " --- ",
+	 closedSides: "|   |",
+	    leftSide: "|    ",
+	   rightSide: "    |",
+	     noWalls: "     "
+}
+
 
 const utils = {
 	getRandom: function(min, max) { // Generate random number from min to max INCLUSIVE
@@ -24,7 +47,7 @@ const utils = {
 			});
 			strBuild += "W: "+visitedMap[parent.y][parent.x-1]+", "
 		}
-		if (parent.x+1 <= GridSize-1 && visitedMap[parent.y]  && visitedMap[parent.y][parent.x+1] == 0) {
+		if (parent.x+1 < GridSize && visitedMap[parent.y]  && visitedMap[parent.y][parent.x+1] == 0) {
 			children.push({
 				x: parent.x+1,
 				y: parent.y
@@ -38,28 +61,68 @@ const utils = {
 			});
 			strBuild += "N: "+visitedMap[parent.y-1][parent.x]+", "
 		}
-		if (parent.y+1 <= GridSize-1 && visitedMap[parent.y+1][parent.x] == 0) {
+		if (parent.y+1 < GridSize && visitedMap[parent.y+1][parent.x] == 0) {
 			children.push({
 				x: parent.x,
 				y: parent.y+1
 			});
 			strBuild += "S: "+visitedMap[parent.y+1][parent.x]+", "
 		}
-		//console.log(strBuild);
-		//console.log("Unvisited Neighbours:", children)
-
+		children.find(function (item, i) {
+			if(!(item.x < GridSize) || !(item.y < GridSize)){
+				throw "Child out of Bounds!"
+			}
+		});
 		return children;
 	},
 	getRndChild: function(parent) {
 		let children = utils.getChildren(parent);
 		let rndNum = utils.getRandom(0, children.length-1)
-		//console.log("rndNum:",rndNum);
 		return children.length == 1 ? children[0] : children[rndNum];
 	},
 	hasUnvisitedChilds: function (parent) {
 		let childs = utils.getChildren(parent);
 		if (childs.length > 0) {return true;}
 		return false;
+	},
+	findNodeByID: function (nodesIn, idIn) {
+		for (var i = 0; i < nodesIn.length; i++) {
+			if(nodesIn[i]["id"] == idIn){
+				return nodesIn[i];
+			}else{
+				let foundInChild = utils.findNodeByID(nodesIn[i]["childs"], idIn);
+				if(foundInChild){
+					return foundInChild;
+				}
+			}
+		}
+		return null;
+	},
+	findNodeTreeByCoords: function (nodesIn, coordsIn) {
+		for (var i = 0; i < nodesIn.length; i++) {
+			if(nodesIn[i]["x"] == coordsIn.x && nodesIn[i]["y"] == coordsIn.y){
+				return nodesIn[i];
+			}else{
+				let foundInChild = utils.findNodeTreeByCoords(nodesIn[i]["childs"], coordsIn);
+				if(foundInChild){
+					return foundInChild;
+				}
+			}
+		}
+		return null;
+	},
+	hasChildWCoords: function (parent, coordsIn) {
+		if(	((coordsIn.x < 0) || (coordsIn.x >= GridSize)) ||
+			((coordsIn.y < 0) || (coordsIn.y >= GridSize))){
+			return null;
+		}
+
+		for (var i = 0; i < parent["childs"].length; i++) {
+			if (parent["childs"][i]["x"] == coordsIn.x && parent["childs"][i]["y"] == coordsIn.y) {
+				return parent["childs"][i];
+			}
+		}
+		return null;
 	}
 }
 
@@ -80,6 +143,8 @@ function drawLab(gridSize, currCoors) {
 				strBuild += charset == 0 ? "☼": "░";
 			}else if (visitedMap[i][j] == 1) {
 				strBuild += charset == 0 ? "▣": "▒";
+			}else if (visitedMap[i][j] == 3) {
+				strBuild += "@";
 			}else{
 				strBuild += charset == 0 ? "■": "▓";
 			}
@@ -100,7 +165,7 @@ function drawLab(gridSize, currCoors) {
 		console.log(callStack);
 	}
 	
-	console.log("=====================\n");
+	console.log("=====================");
 }
 
 function drawLabrinth(gridSize) {
@@ -138,35 +203,77 @@ while(unvisited){
 		x: utils.getRandom(0, gridSize-1),
 		y: utils.getRandom(0, gridSize-1)
 	}
-	callStack[callStack.length] = initCoords;
+	const exitCoords = {
+		x: utils.getRandom(0, gridSize-1),
+		y: utils.getRandom(0, gridSize-1)
+	}
+	let idCounter = 0;
+	let lastIdCounter = 0;
 	let unvisitedNeighbours = true;
 	let currCoors = initCoords;
 	let canShutdown = false;
 	let intervalID;
 	let lastRun = false;
+	let foundExit = true;
+
+	
+	callStack[callStack.length] = initCoords;
+	DFSTree[0][idCounter.toString()] = {
+			"id": idCounter,
+			"parent": null,
+			"x": currCoors.x,
+			"y": currCoors.y,
+			"childs": []
+		}
+
 	intervalID = setInterval(function () { // Use Interval just to change speed of update (Better Drawings!! :D )
 		drawLab(gridSize, currCoors);
-		//console.log(currCoors)
-		//console.log("Starting Point:", "Y:", "("+currCoors.y+")", "X:", "("+alphabet[currCoors.x-1]+") ("+currCoors.x+")\n");
-		//console.log(visitedMap)
+		//console.log(JSON.stringify(DFSTree[0]))
 		if(utils.hasUnvisitedChilds(currCoors)){
+			if(!(currCoors.x < gridSize) || !(currCoors.y < gridSize)){
+				throw "Child out of Bounds!"
+			}
+			idCounter++;
 			var rndNeighbour = utils.getRndChild(currCoors);
-			//console.log("Selected Child Point:", "Y:", "("+rndNeighbour.y+")", "X:", "("+alphabet[rndNeighbour.x-1]+") ("+rndNeighbour.x+")\n");
 			callStack[callStack.length] = rndNeighbour;
 			visitedMap[currCoors.y][currCoors.x] = 1;
-			//console.log("Cell Value:",visitedMap[currCoors.y][currCoors.x])
 			currCoors = rndNeighbour;
+
+			let lastNode = utils.findNodeByID(DFSTree[0], lastIdCounter);
+			lastNode["childs"].push({
+				"id": idCounter,
+				"parent": lastIdCounter,
+				"x": currCoors.x,
+				"y": currCoors.y,
+				"childs": []
+			});
+			lastIdCounter++;
 		}else{
-			//console.log("Going Back!");
+			console.log("Going Back!");
 			callStack.splice(callStack.length-1, 1);
 			if (currCoors != undefined) {
 				visitedMap[currCoors.y][currCoors.x] = 2;
 			}
-			currCoors = callStack[callStack.length-1];
 
+			if (currCoors == exitCoords) {
+				currCoors = undefined;
+				console.log("Found Exit!");
+				clearInterval(intervalID);
+
+				prettyDraw(gridSize, currCoors);
+				return;
+			}else{
+				currCoors = callStack[callStack.length-1];
+			}
+			lastIdCounter--;
 		}
+		if (currCoors != undefined) {
+			visitedMap[currCoors.y][currCoors.x] = 3;
+		}
+
 		if(lastRun){
 			clearInterval(intervalID);
+			prettyDraw(gridSize, currCoors);
 			return;
 		}
 		if(canShutdown && callStack.length == 0){
@@ -174,9 +281,61 @@ while(unvisited){
 		}
 
 		canShutdown = true;
+
+
+		console.log("Pretty Draw\n");
 	}, drawWaitTime);
 }
 
+function prettyDraw(gridSize, currCoors) {
+	let strBuild = "";
+	for (var i = 0; i < gridSize; i++) {
+		for (var j = 0; j < gridSize; j++) {
+			strBuild += labrinthSectorParts.horonzontal;
+		}
+		strBuild += "\n"
+		if(false){
+			for (var j = 0; j < gridSize; j++) {
+				//strBuild += labrinthSectorParts.horonzontal;
+			}
+			strBuild += "\n"
+		}else{
+			for (var j = 0; j < gridSize; j++) {
+				var node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
+				var hasChildBehind = utils.hasChildWCoords(node, {x: j-1, y: i});
+
+				var hasChildForward = utils.hasChildWCoords(node, {x: j+1, y: i});
+				hasChildForward = hasChildForward == undefined ? null : hasChildForward; // Change from undefined too null
+				var tempPB = utils.findNodeByID(DFSTree[0], node["parent"]);
+				var hasParentBehind = null;
+				if (tempPB != null && tempPB["x"] == j-1 && tempPB["y"] == i) {
+					hasParentBehind = tempPB
+				}
+				var tempPF = utils.findNodeByID(DFSTree[0], node["parent"]);
+				var hasParentForward = null;
+				if (tempPF != null && tempPF["x"] == j+1 && tempPB["y"] == i) {
+					hasParentForward = tempPF
+				}
+
+				if(hasChildBehind != null && hasChildForward != null || hasParentBehind != null && hasParentForward != null ){
+					strBuild += labrinthSectorParts.noWalls;
+				}else if(hasChildBehind != null || hasParentBehind != null){
+					strBuild += labrinthSectorParts.rightSide;
+				}else if(hasChildForward != null || hasParentForward != null){
+					strBuild += labrinthSectorParts.leftSide;
+				}else{
+					strBuild += labrinthSectorParts.closedSides
+				}
+			}
+			strBuild += "\n";
+		}
+	}
+	for (var j = 0; j < gridSize; j++) {
+			strBuild += labrinthSectorParts.horonzontal;
+		}
+		strBuild += "\n"
+	console.log(strBuild);
+}
 
 function prepareVars(gridSize) {
 	for (var i = 0; i < gridSize; i++) {

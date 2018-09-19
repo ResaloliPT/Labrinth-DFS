@@ -72,14 +72,3 @@ while(unvisited){
 		currCell = callstack[length]
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
