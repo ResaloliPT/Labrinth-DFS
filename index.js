@@ -12,7 +12,7 @@ let DFSTree = [[]]; // Contains the tree
 /*
 	DFS Tree Struct
 
-	[{ 
+	[{
 		"id": 0, // Cell ID
 		"parent": null, // Cell Parent
 		"x": 0000, // Cell x Coordinates
@@ -27,7 +27,11 @@ const labrinthSectorParts= {
 	 closedSides: "|   |",
 	    leftSide: "|    ",
 	   rightSide: "    |",
-	     noWalls: "     "
+	     noWalls: "     ",
+	closedSidesR: "| R |",
+		 leftSideR: "|  R ",
+	  rightSideR: "  R |",
+			noWallsR: "  R  "
 }
 
 
@@ -86,7 +90,7 @@ const utils = {
 		return false;
 	},
 	findNodeByID: function (nodesIn, idIn) {
-		for (var i = 0; i < nodesIn.length; i++) {
+		for (let i = 0; i < nodesIn.length; i++) {
 			if(nodesIn[i]["id"] == idIn){
 				return nodesIn[i];
 			}else{
@@ -99,7 +103,7 @@ const utils = {
 		return null;
 	},
 	findNodeTreeByCoords: function (nodesIn, coordsIn) {
-		for (var i = 0; i < nodesIn.length; i++) {
+		for (let i = 0; i < nodesIn.length; i++) {
 			if(nodesIn[i]["x"] == coordsIn.x && nodesIn[i]["y"] == coordsIn.y){
 				return nodesIn[i];
 			}else{
@@ -117,13 +121,26 @@ const utils = {
 			return null;
 		}
 
-		for (var i = 0; i < parent["childs"].length; i++) {
+		for (let i = 0; i < parent["childs"].length; i++) {
 			if (parent["childs"][i]["x"] == coordsIn.x && parent["childs"][i]["y"] == coordsIn.y) {
 				return parent["childs"][i];
 			}
 		}
 		return null;
+	},
+	hasParentWCoords: function(child, coordsIn){
+		var parent = utils.findNodeByID(DFSTree[0], childs["parent"]);
 	}
+}
+
+/*const initCoords = {
+	x: utils.getRandom(0, GridSize-1),
+	y: utils.getRandom(0, GridSize-1)
+}*/
+
+const initCoords = {
+	x: 0,
+	y: 4
 }
 
 function drawLab(gridSize, currCoors) {
@@ -135,10 +152,10 @@ function drawLab(gridSize, currCoors) {
 	}else  {
 		console.log("!Maze Ended!")
 	}
-	
+
 	let strBuild = "";
-	for (var i = 0; i < gridSize; i++) {
-		for (var j = 0; j < gridSize; j++) {
+	for (let i = 0; i < gridSize; i++) {
+		for (let j = 0; j < gridSize; j++) {
 			if(visitedMap[i][j] == 2){
 				strBuild += charset == 0 ? "☼": "░";
 			}else if (visitedMap[i][j] == 1) {
@@ -152,10 +169,10 @@ function drawLab(gridSize, currCoors) {
 		strBuild += "\n";
 	}
 	console.log(strBuild);
-	
+
 
 	let stackStrBuild = "";
-	for (var i = callStack.length - 1; i >= 0; i--) {
+	for (let i = callStack.length - 1; i >= 0; i--) {
 		stackStrBuild += callStack[i]+"\n"
 	}
 
@@ -164,7 +181,7 @@ function drawLab(gridSize, currCoors) {
 		console.log("CallStack Draw");
 		console.log(callStack);
 	}
-	
+
 	console.log("=====================");
 }
 
@@ -185,10 +202,10 @@ While there are unvisited cells
 		Make it the current cell
 
 "Codie" Pseudo-Code
-var currCell = initalCell;
+let currCell = initalCell;
 while(unvisited){
 	if(currCell has unvisited Neighbours){
-		var rndNeihbour = some neighbour
+		let rndNeihbour = some neighbour
 		callstack += rndNeihbour
 		removedoor between currCell and rndNeihbour
 		currCell = rndNeihbour
@@ -198,11 +215,6 @@ while(unvisited){
 	}
 }
 */
-
-	const initCoords = {
-		x: utils.getRandom(0, gridSize-1),
-		y: utils.getRandom(0, gridSize-1)
-	}
 	const exitCoords = {
 		x: utils.getRandom(0, gridSize-1),
 		y: utils.getRandom(0, gridSize-1)
@@ -216,7 +228,7 @@ while(unvisited){
 	let lastRun = false;
 	let foundExit = true;
 
-	
+
 	callStack[callStack.length] = initCoords;
 	DFSTree[0][idCounter.toString()] = {
 			"id": idCounter,
@@ -234,7 +246,7 @@ while(unvisited){
 				throw "Child out of Bounds!"
 			}
 			idCounter++;
-			var rndNeighbour = utils.getRndChild(currCoors);
+			let rndNeighbour = utils.getRndChild(currCoors);
 			callStack[callStack.length] = rndNeighbour;
 			visitedMap[currCoors.y][currCoors.x] = 1;
 			currCoors = rndNeighbour;
@@ -249,7 +261,6 @@ while(unvisited){
 			});
 			lastIdCounter++;
 		}else{
-			console.log("Going Back!");
 			callStack.splice(callStack.length-1, 1);
 			if (currCoors != undefined) {
 				visitedMap[currCoors.y][currCoors.x] = 2;
@@ -289,58 +300,89 @@ while(unvisited){
 
 function prettyDraw(gridSize, currCoors) {
 	let strBuild = "";
-	for (var i = 0; i < gridSize; i++) {
-		for (var j = 0; j < gridSize; j++) {
-			strBuild += labrinthSectorParts.horonzontal;
-		}
-		strBuild += "\n"
-		if(false){
-			for (var j = 0; j < gridSize; j++) {
-				//strBuild += labrinthSectorParts.horonzontal;
+	for (let i = 0; i < gridSize; i++) {
+		strBuild += labrinthSectorParts.horonzontal;
+	}
+	strBuild += "\n"
+	for (let i = 0; i < gridSize; i++) {
+		for (let j = 0; j < gridSize; j++) {
+			let node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
+			let hasChildBehind = utils.hasChildWCoords(node, {x: j-1, y: i});
+			let hasChildForward = utils.hasChildWCoords(node, {x: j+1, y: i});
+			hasChildForward = hasChildForward == undefined ? null : hasChildForward; // Change from undefined too null
+			let tempPB = utils.findNodeByID(DFSTree[0], node["parent"]);
+			let hasParentBehind = null;
+			if (tempPB != null && tempPB["x"] == j-1 && tempPB["y"] == i) {
+				hasParentBehind = tempPB;
 			}
-			strBuild += "\n"
-		}else{
-			for (var j = 0; j < gridSize; j++) {
-				var node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
-				var hasChildBehind = utils.hasChildWCoords(node, {x: j-1, y: i});
-
-				var hasChildForward = utils.hasChildWCoords(node, {x: j+1, y: i});
-				hasChildForward = hasChildForward == undefined ? null : hasChildForward; // Change from undefined too null
-				var tempPB = utils.findNodeByID(DFSTree[0], node["parent"]);
-				var hasParentBehind = null;
-				if (tempPB != null && tempPB["x"] == j-1 && tempPB["y"] == i) {
-					hasParentBehind = tempPB
-				}
-				var tempPF = utils.findNodeByID(DFSTree[0], node["parent"]);
-				var hasParentForward = null;
-				if (tempPF != null && tempPF["x"] == j+1 && tempPB["y"] == i) {
-					hasParentForward = tempPF
-				}
-
-				if(hasChildBehind != null && hasChildForward != null || hasParentBehind != null && hasParentForward != null ){
+			let tempPF = utils.findNodeByID(DFSTree[0], node["parent"]);
+			let hasParentForward = null;
+			if (tempPF != null && tempPF["x"] == j+1 && tempPB["y"] == i) {
+				hasParentForward = tempPF;
+			}
+			if(hasChildBehind != null && hasChildForward != null || hasParentBehind != null && hasParentForward != null ){
+				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+					strBuild += labrinthSectorParts.noWallsR;
+				} else {
 					strBuild += labrinthSectorParts.noWalls;
-				}else if(hasChildBehind != null || hasParentBehind != null){
+				}
+			}else if(hasChildBehind != null || hasParentBehind != null){
+				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+					strBuild += labrinthSectorParts.rightSideR;
+				} else {
 					strBuild += labrinthSectorParts.rightSide;
-				}else if(hasChildForward != null || hasParentForward != null){
+				}
+			}else if(hasChildForward != null || hasParentForward != null){
+				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+					strBuild += labrinthSectorParts.leftSideR;
+				} else {
 					strBuild += labrinthSectorParts.leftSide;
+				}
+			}else{
+				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+					strBuild += labrinthSectorParts.closedSidesR;
+				} else {
+					strBuild += labrinthSectorParts.closedSides;
+				}
+			}
+		}
+		strBuild += "\n";
+		if (i < gridSize-1) {
+			console.log("Line:", i);
+			for (let j = 0; j < gridSize; j++) {
+				let node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
+				let hasChildDown = utils.hasChildWCoords(node, {x: j, y: i+1});
+				let tempPD = utils.findNodeByID(DFSTree[0], node["parent"]);
+				let hasParentDown = null;
+				if (tempPD != null && tempPD["y"] == i+1 && tempPD["x"] == j) {
+					hasParentDown = tempPD;
+				}
+				console.log("Node:", node);
+				console.log("Temp:", tempPD);
+				if (tempPD != null) {
+					console.log("Searching for X:"+(i+1)+" Y:"+(i));
+					console.log("Parent X:"+tempPD["x"]+" Y: "+tempPD["y"]);
+				}
+				console.log("Parent Down:", hasParentDown);
+				if(hasChildDown != null || hasParentDown != null){
+						strBuild += labrinthSectorParts.noWalls;
 				}else{
-					strBuild += labrinthSectorParts.closedSides
+						strBuild += labrinthSectorParts.horonzontal;
 				}
 			}
 			strBuild += "\n";
 		}
 	}
-	for (var j = 0; j < gridSize; j++) {
-			strBuild += labrinthSectorParts.horonzontal;
-		}
-		strBuild += "\n"
+	for (let j = 0; j < gridSize; j++) {
+		strBuild += labrinthSectorParts.horonzontal;
+	}
 	console.log(strBuild);
 }
 
 function prepareVars(gridSize) {
-	for (var i = 0; i < gridSize; i++) {
+	for (let i = 0; i < gridSize; i++) {
 		visitedMap[i] = [];
-		for (var j = 0; j < gridSize; j++) {
+		for (let j = 0; j < gridSize; j++) {
 			visitedMap[i][j] = 0;
 		}
 	}
