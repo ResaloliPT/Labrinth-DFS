@@ -133,14 +133,14 @@ const utils = {
 	}
 }
 
-/*const initCoords = {
-	x: utils.getRandom(0, GridSize-1),
-	y: utils.getRandom(0, GridSize-1)
-}*/
+// const initCoords = {
+// 	x: utils.getRandom(0, GridSize-1),
+// 	y: utils.getRandom(0, GridSize-1)
+// }
 
 const initCoords = {
-	x: 0,
-	y: 4
+	x: 2,
+	y: 3
 }
 
 function drawLab(gridSize, currCoors) {
