@@ -1,7 +1,7 @@
 //Config
-const GridSize = 25; //n by n Grid
-const drawWaitTime = 1; // Update Wait Timer (in ms)
-const allowCallStackDraw = false; // Set to true to Draw the CallStack
+const GridSize = 10; //n by n Grid
+const drawWaitTime = 20; // Update Wait Timer (in ms)
+const allowCallStackDraw = true; // Set to true to Draw the CallStack
 const charset = 0; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
@@ -18,15 +18,15 @@ const labrinthSectorParts= {
 	closedSidesR: "| R |", // Walls for Root
 	   leftSideR: "| R  ",
 	  rightSideR: "  R |",
-		noWallsR: "  R  ",
+		  noWallsR: "  R  ",
 	closedSidesD: "| D |", // Walls for Destination
 	   leftSideD: "| D  ",
 	  rightSideD: "  D |",
-		noWallsD: "  D  ",
+		  noWallsD: "  D  ",
 	closedSidesP: "| P |", // Walls for Maze Path
 	   leftSideP: "| P  ",
 	  rightSideP: "  P |",
-		noWallsP: "  P  "
+		  noWallsP: "  P  "
 }
 
 const utils = {
@@ -222,10 +222,10 @@ while(unvisited){
 	let lastCoords = currCoors;
 	let walkedBack = false;
 	let walkedBackD = 0;
-	callStack[callStack.length] = initCoords;
-	visitedMap[currCoors.y][currCoors.x] = 1;
+	callStack[callStack.length] = initCoords;  // Push to stack current cell
+	visitedMap[currCoors.y][currCoors.x] = 1;  // Mark cell as Visited
 	TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: null});
-	
+
 	intervalID = setInterval(function () { // Use Interval just to change speed of update (Better Drawings!! :D )
 		drawLab(GridSize, currCoors);
 		if(utils.hasUnvisitedChilds(currCoors)){
