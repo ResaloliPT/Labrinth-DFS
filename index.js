@@ -1,43 +1,38 @@
 //Config
-const GridSize = 5; //n by n Grid
-const drawWaitTime = 50; // Update Wait Timer (in ms)
+const GridSize = 25; //n by n Grid
+const drawWaitTime = 1; // Update Wait Timer (in ms)
 const allowCallStackDraw = false; // Set to true to Draw the CallStack
 const charset = 0; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
 let visitedMap = []; // Keep Cache of Visted Cells
 let callStack = []; // CallStack itself
-let DFSTree = [[]]; // Contains the tree
-
-/*
-	DFS Tree Struct
-
-	[{
-		"id": 0, // Cell ID
-		"parent": null, // Cell Parent
-		"x": 0000, // Cell x Coordinates
-		"y": 0000, // Cell y Coordinates
-		"childs": [ ... ] // Cell Children
-	},
-	...]
-*/
+let TreeList = []; // Contains the tree
 
 const labrinthSectorParts= {
-	 horonzontal: " --- ",
+	 horonzontal: " --- ", // Normal walls
 	 closedSides: "|   |",
 	    leftSide: "|    ",
 	   rightSide: "    |",
 	     noWalls: "     ",
-	closedSidesR: "| R |",
-		 leftSideR: "|  R ",
+	closedSidesR: "| R |", // Walls for Root
+	   leftSideR: "| R  ",
 	  rightSideR: "  R |",
-			noWallsR: "  R  "
+		noWallsR: "  R  ",
+	closedSidesD: "| D |", // Walls for Destination
+	   leftSideD: "| D  ",
+	  rightSideD: "  D |",
+		noWallsD: "  D  ",
+	closedSidesP: "| P |", // Walls for Maze Path
+	   leftSideP: "| P  ",
+	  rightSideP: "  P |",
+		noWallsP: "  P  "
 }
-
 
 const utils = {
 	getRandom: function(min, max) { // Generate random number from min to max INCLUSIVE
-		return Math.floor(Math.random() * max+1) + min;
+		let rnd = Math.floor(Math.random() * max+1) + min;
+		return rnd
 	},
 	getChildren: function (parent) {
 		let strBuild = "";
@@ -89,28 +84,18 @@ const utils = {
 		if (childs.length > 0) {return true;}
 		return false;
 	},
-	findNodeByID: function (nodesIn, idIn) {
-		for (let i = 0; i < nodesIn.length; i++) {
-			if(nodesIn[i]["id"] == idIn){
-				return nodesIn[i];
-			}else{
-				let foundInChild = utils.findNodeByID(nodesIn[i]["childs"], idIn);
-				if(foundInChild){
-					return foundInChild;
-				}
+	findNodeByID: function (idIn) {
+		for (var i = 0; i < TreeList.length; i++) {
+			if (TreeList[i].id == idIn) {
+				return TreeList[i];
 			}
 		}
 		return null;
 	},
-	findNodeTreeByCoords: function (nodesIn, coordsIn) {
-		for (let i = 0; i < nodesIn.length; i++) {
-			if(nodesIn[i]["x"] == coordsIn.x && nodesIn[i]["y"] == coordsIn.y){
-				return nodesIn[i];
-			}else{
-				let foundInChild = utils.findNodeTreeByCoords(nodesIn[i]["childs"], coordsIn);
-				if(foundInChild){
-					return foundInChild;
-				}
+	findNodeTreeByCoords: function (coordsIn) {
+		for (var i = 0; i < TreeList.length; i++) {
+			if (TreeList[i].coords.x == coordsIn.x && TreeList[i].coords.y == coordsIn.y ) {
+				return TreeList[i];
 			}
 		}
 		return null;
@@ -119,28 +104,39 @@ const utils = {
 		if(	((coordsIn.x < 0) || (coordsIn.x >= GridSize)) ||
 			((coordsIn.y < 0) || (coordsIn.y >= GridSize))){
 			return null;
+		}else if (parent == null) {
+			return null;
 		}
 
-		for (let i = 0; i < parent["childs"].length; i++) {
-			if (parent["childs"][i]["x"] == coordsIn.x && parent["childs"][i]["y"] == coordsIn.y) {
-				return parent["childs"][i];
+		for (var i = 0; i < TreeList.length; i++) {
+			if ((TreeList[i].coords.x == coordsIn.x && TreeList[i].coords.y == coordsIn.y) && TreeList[i].parent == parent.id) {
+				return TreeList[i];
 			}
 		}
 		return null;
 	},
 	hasParentWCoords: function(child, coordsIn){
-		var parent = utils.findNodeByID(DFSTree[0], childs["parent"]);
+		for (var i = 0; i < TreeList.length; i++) {
+			if ((TreeList[i].coords.x == coordsIn.x && TreeList[i].coords.y == coordsIn.y) && TreeList[i].id == child.parent) {
+				return TreeList[i];
+			}
+		}
+		return null;
+	},
+	compareCoords: function (coords1, coords2) {
+		if (coords1.x == coords2.x && coords1.y == coords2.y) {
+			return true;
+		}
+		return false;
 	}
 }
-
-// const initCoords = {
-// 	x: utils.getRandom(0, GridSize-1),
-// 	y: utils.getRandom(0, GridSize-1)
-// }
-
 const initCoords = {
-	x: 2,
-	y: 3
+	x: utils.getRandom(0, GridSize-1),
+	y: utils.getRandom(0, GridSize-1)
+}
+const exitCoords = {
+	x: utils.getRandom(0, GridSize-1),
+	y: utils.getRandom(0, GridSize-1)
 }
 
 function drawLab(gridSize, currCoors) {
@@ -172,7 +168,7 @@ function drawLab(gridSize, currCoors) {
 
 
 	let stackStrBuild = "";
-	for (let i = callStack.length - 1; i >= 0; i--) {
+	for (var i = 0; i < callStack.length; i++) {
 		stackStrBuild += callStack[i]+"\n"
 	}
 
@@ -185,7 +181,7 @@ function drawLab(gridSize, currCoors) {
 	console.log("=====================");
 }
 
-function drawLabrinth(gridSize) {
+function generateLabrinth(gridSize) {
 
 /*
 
@@ -215,11 +211,7 @@ while(unvisited){
 	}
 }
 */
-	const exitCoords = {
-		x: utils.getRandom(0, gridSize-1),
-		y: utils.getRandom(0, gridSize-1)
-	}
-	let idCounter = 0;
+	let idCounter = 1;
 	let lastIdCounter = 0;
 	let unvisitedNeighbours = true;
 	let currCoors = initCoords;
@@ -227,64 +219,46 @@ while(unvisited){
 	let intervalID;
 	let lastRun = false;
 	let foundExit = true;
-
-
+	let lastCoords = currCoors;
+	let walkedBack = false;
+	let walkedBackD = 0;
 	callStack[callStack.length] = initCoords;
-	DFSTree[0][idCounter.toString()] = {
-			"id": idCounter,
-			"parent": null,
-			"x": currCoors.x,
-			"y": currCoors.y,
-			"childs": []
-		}
-
+	visitedMap[currCoors.y][currCoors.x] = 1;
+	TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: null});
+	
 	intervalID = setInterval(function () { // Use Interval just to change speed of update (Better Drawings!! :D )
-		drawLab(gridSize, currCoors);
-		//console.log(JSON.stringify(DFSTree[0]))
+		drawLab(GridSize, currCoors);
 		if(utils.hasUnvisitedChilds(currCoors)){
-			if(!(currCoors.x < gridSize) || !(currCoors.y < gridSize)){
+			if(!(currCoors.x < GridSize) || !(currCoors.y < GridSize)){
 				throw "Child out of Bounds!"
 			}
 			idCounter++;
-			let rndNeighbour = utils.getRndChild(currCoors);
+			lastIdCounter++;
+ 			let rndNeighbour = utils.getRndChild(currCoors);
+			currCoors = rndNeighbour;
+			let lastNode = utils.findNodeTreeByCoords(lastCoords);
 			callStack[callStack.length] = rndNeighbour;
 			visitedMap[currCoors.y][currCoors.x] = 1;
-			currCoors = rndNeighbour;
+			TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: lastIdCounter});
 
-			let lastNode = utils.findNodeByID(DFSTree[0], lastIdCounter);
-			lastNode["childs"].push({
-				"id": idCounter,
-				"parent": lastIdCounter,
-				"x": currCoors.x,
-				"y": currCoors.y,
-				"childs": []
-			});
-			lastIdCounter++;
+			if(walkedBack ==  true){
+				lastIdCounter = idCounter-1;
+				walkedBack =  false;
+			}
 		}else{
-			callStack.splice(callStack.length-1, 1);
+			walkedBack = true;
 			if (currCoors != undefined) {
-				visitedMap[currCoors.y][currCoors.x] = 2;
+				visitedMap[callStack[callStack.length-1].y][callStack[callStack.length-1].x] = 2;
+				lastIdCounter--;
 			}
-
-			if (currCoors == exitCoords) {
-				currCoors = undefined;
-				console.log("Found Exit!");
-				clearInterval(intervalID);
-
-				prettyDraw(gridSize, currCoors);
-				return;
-			}else{
-				currCoors = callStack[callStack.length-1];
-			}
-			lastIdCounter--;
+			callStack.splice(callStack.length-1, 1);
+			currCoors = callStack[callStack.length-1];
 		}
-		if (currCoors != undefined) {
-			visitedMap[currCoors.y][currCoors.x] = 3;
-		}
-
+		lastCoords = currCoors;
 		if(lastRun){
 			clearInterval(intervalID);
-			prettyDraw(gridSize, currCoors);
+			verifyTree();
+			drawLabrinth();
 			return;
 		}
 		if(canShutdown && callStack.length == 0){
@@ -292,89 +266,83 @@ while(unvisited){
 		}
 
 		canShutdown = true;
-
-
-		console.log("Pretty Draw\n");
 	}, drawWaitTime);
 }
 
-function prettyDraw(gridSize, currCoors) {
+function verifyTree() {
+	for (var i = 0; i < TreeList.length; i++) {
+		for (var j = 0; j < TreeList.length; j++) {
+			if (TreeList[i].id == TreeList[j].parent) {
+				if(!(TreeList[i].x == TreeList[j].x || TreeList[i].y == TreeList[j].y)){
+					throw "Node Tree Invalid!"
+				}
+			}
+		}
+	}
+}
+
+function drawLabrinth() {
+	console.log("Maze Draw\n");
 	let strBuild = "";
-	for (let i = 0; i < gridSize; i++) {
+	//Draw top line
+	for (let i = 0; i < GridSize; i++) {
 		strBuild += labrinthSectorParts.horonzontal;
 	}
 	strBuild += "\n"
-	for (let i = 0; i < gridSize; i++) {
-		for (let j = 0; j < gridSize; j++) {
-			let node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
-			let hasChildBehind = utils.hasChildWCoords(node, {x: j-1, y: i});
-			let hasChildForward = utils.hasChildWCoords(node, {x: j+1, y: i});
-			hasChildForward = hasChildForward == undefined ? null : hasChildForward; // Change from undefined too null
-			let tempPB = utils.findNodeByID(DFSTree[0], node["parent"]);
-			let hasParentBehind = null;
-			if (tempPB != null && tempPB["x"] == j-1 && tempPB["y"] == i) {
-				hasParentBehind = tempPB;
-			}
-			let tempPF = utils.findNodeByID(DFSTree[0], node["parent"]);
-			let hasParentForward = null;
-			if (tempPF != null && tempPF["x"] == j+1 && tempPB["y"] == i) {
-				hasParentForward = tempPF;
-			}
-			if(hasChildBehind != null && hasChildForward != null || hasParentBehind != null && hasParentForward != null ){
-				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
-					strBuild += labrinthSectorParts.noWallsR;
-				} else {
+
+	for (var lineIDx = 0; lineIDx < GridSize; lineIDx++) { // For each 2 Lines (Cell line and wall line)
+		for (var columnIDx = 0; columnIDx < GridSize; columnIDx++) { // For each Column in Cell line
+			let node = utils.findNodeTreeByCoords({x: columnIDx, y: lineIDx}); // Get Cell by Coords
+			let childToLeft = utils.hasChildWCoords(node, {x: columnIDx-1, y: lineIDx}) != null ? true : false;
+			let childToRight = utils.hasChildWCoords(node, {x: columnIDx+1, y: lineIDx}) != null ? true : false;
+			let parentToLeft = utils.hasParentWCoords(node, {x: columnIDx-1, y: lineIDx}) != null ? true : false;
+			let parentToRight = utils.hasParentWCoords(node, {x: columnIDx+1, y: lineIDx}) != null ? true : false;
+
+			if(utils.compareCoords(node.coords, initCoords)){ // If current node is the Root Node
+				if((childToLeft && childToRight) || (parentToLeft && parentToRight) || (parentToLeft && childToRight) || (childToLeft && parentToRight)){
 					strBuild += labrinthSectorParts.noWalls;
-				}
-			}else if(hasChildBehind != null || hasParentBehind != null){
-				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+				} else if (childToLeft || parentToLeft) {
 					strBuild += labrinthSectorParts.rightSideR;
-				} else {
-					strBuild += labrinthSectorParts.rightSide;
-				}
-			}else if(hasChildForward != null || hasParentForward != null){
-				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
+				} else if (childToRight || parentToRight) {
 					strBuild += labrinthSectorParts.leftSideR;
 				} else {
-					strBuild += labrinthSectorParts.leftSide;
-				}
-			}else{
-				if (node["x"] == initCoords.x && node["y"] == initCoords.y) {
 					strBuild += labrinthSectorParts.closedSidesR;
+				}
+			} else if (utils.compareCoords(node.coords, exitCoords)) { // If corrent node is Destination
+				if((childToLeft && childToRight) || (parentToLeft && parentToRight) || (parentToLeft && childToRight) || (childToLeft && parentToRight)){
+					strBuild += labrinthSectorParts.noWalls;
+				} else if (childToLeft || parentToLeft) {
+					strBuild += labrinthSectorParts.rightSideD;
+				} else if (childToRight || parentToRight) {
+					strBuild += labrinthSectorParts.leftSideD;
+				} else {
+					strBuild += labrinthSectorParts.closedSidesD;
+				}
+			} else{ // Not Root Node
+				if((childToLeft && childToRight) || (parentToLeft && parentToRight) || (parentToLeft && childToRight) || (childToLeft && parentToRight)){
+					strBuild += labrinthSectorParts.noWalls;
+				} else if (childToLeft || parentToLeft) {
+					strBuild += labrinthSectorParts.rightSide;
+				} else if (childToRight || parentToRight) {
+					strBuild += labrinthSectorParts.leftSide;
 				} else {
 					strBuild += labrinthSectorParts.closedSides;
 				}
 			}
 		}
 		strBuild += "\n";
-		if (i < gridSize-1) {
-			console.log("Line:", i);
-			for (let j = 0; j < gridSize; j++) {
-				let node = utils.findNodeTreeByCoords(DFSTree[0], {x: j, y: i});
-				let hasChildDown = utils.hasChildWCoords(node, {x: j, y: i+1});
-				let tempPD = utils.findNodeByID(DFSTree[0], node["parent"]);
-				let hasParentDown = null;
-				if (tempPD != null && tempPD["y"] == i+1 && tempPD["x"] == j) {
-					hasParentDown = tempPD;
-				}
-				console.log("Node:", node);
-				console.log("Temp:", tempPD);
-				if (tempPD != null) {
-					console.log("Searching for X:"+(i+1)+" Y:"+(i));
-					console.log("Parent X:"+tempPD["x"]+" Y: "+tempPD["y"]);
-				}
-				console.log("Parent Down:", hasParentDown);
-				if(hasChildDown != null || hasParentDown != null){
-						strBuild += labrinthSectorParts.noWalls;
-				}else{
-						strBuild += labrinthSectorParts.horonzontal;
-				}
+		for (var columnIDx = 0; columnIDx < GridSize; columnIDx++) { // For each Column in Wall line
+			let node = utils.findNodeTreeByCoords({x: columnIDx, y: lineIDx}); // Get Cell by Coords
+			let childOnBottom = utils.hasChildWCoords(node, {x: columnIDx, y: lineIDx+1}) != null ? true : false;
+			let parentOnBottom = utils.hasParentWCoords(node, {x: columnIDx, y: lineIDx+1}) != null ? true : false;
+
+			if(childOnBottom || parentOnBottom){
+				strBuild += labrinthSectorParts.noWalls;
+			} else {
+				strBuild += labrinthSectorParts.horonzontal;
 			}
-			strBuild += "\n";
 		}
-	}
-	for (let j = 0; j < gridSize; j++) {
-		strBuild += labrinthSectorParts.horonzontal;
+		strBuild += "\n";
 	}
 	console.log(strBuild);
 }
@@ -390,6 +358,6 @@ function prepareVars(gridSize) {
 
 function runMaze (gridSize) {
 	prepareVars(gridSize);
-	drawLabrinth(gridSize);
+	generateLabrinth(gridSize);
 }
 runMaze(GridSize);
