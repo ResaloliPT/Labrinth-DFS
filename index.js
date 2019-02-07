@@ -1,7 +1,7 @@
 //Config
 const GridSize = 10; //n by n Grid
 const drawWaitTime = 20; // Update Wait Timer (in ms)
-const allowCallStackDraw = true; // Set to true to Draw the CallStack
+const allowCallStackDraw = false; // Set to true to Draw the CallStack
 const charset = 0; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
@@ -128,6 +128,15 @@ const utils = {
 			return true;
 		}
 		return false;
+	},
+	updateNodeProp: function(currCoors, property, value){
+		for (let index = 0; index < TreeList.length; index++) {
+			if(TreeList[index].coords.x == currCoors.x && TreeList[index].coords.y == currCoors.y){
+				TreeList[index][property] = value;
+
+				return;
+			}
+		}
 	}
 }
 const initCoords = {
@@ -213,15 +222,13 @@ while(unvisited){
 */
 	let idCounter = 1;
 	let lastIdCounter = 0;
-	let unvisitedNeighbours = true;
 	let currCoors = initCoords;
 	let canShutdown = false;
 	let intervalID;
 	let lastRun = false;
-	let foundExit = true;
-	let lastCoords = currCoors;
 	let walkedBack = false;
-	let walkedBackD = 0;
+	let destFound = false;
+
 	callStack[callStack.length] = initCoords;  // Push to stack current cell
 	visitedMap[currCoors.y][currCoors.x] = 1;  // Mark cell as Visited
 	TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: null});
@@ -236,16 +243,24 @@ while(unvisited){
 			lastIdCounter++;
  			let rndNeighbour = utils.getRndChild(currCoors);
 			currCoors = rndNeighbour;
-			let lastNode = utils.findNodeTreeByCoords(lastCoords);
 			callStack[callStack.length] = rndNeighbour;
 			visitedMap[currCoors.y][currCoors.x] = 1;
-			TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: lastIdCounter});
+
+			if(currCoors.x == exitCoords.x && currCoors.y == exitCoords.y){
+				destFound = true;
+			}
+				
+			TreeList.push({coords: currCoors, forward: true, id: idCounter, parent: lastIdCounter, isPath: !destFound});
 
 			if(walkedBack ==  true){
 				lastIdCounter = idCounter-1;
 				walkedBack =  false;
 			}
 		}else{
+			if(!destFound){
+				utils.updateNodeProp(currCoors, "isPath", false);
+			}
+
 			walkedBack = true;
 			if (currCoors != undefined) {
 				visitedMap[callStack[callStack.length-1].y][callStack[callStack.length-1].x] = 2;
@@ -320,13 +335,13 @@ function drawLabrinth() {
 				}
 			} else{ // Not Root Node
 				if((childToLeft && childToRight) || (parentToLeft && parentToRight) || (parentToLeft && childToRight) || (childToLeft && parentToRight)){
-					strBuild += labrinthSectorParts.noWalls;
+					strBuild += node.isPath ? labrinthSectorParts.noWallsP : labrinthSectorParts.noWalls;
 				} else if (childToLeft || parentToLeft) {
-					strBuild += labrinthSectorParts.rightSide;
+					strBuild += node.isPath ? labrinthSectorParts.rightSideP : labrinthSectorParts.rightSide;
 				} else if (childToRight || parentToRight) {
-					strBuild += labrinthSectorParts.leftSide;
+					strBuild += node.isPath ? labrinthSectorParts.leftSideP : labrinthSectorParts.leftSide;
 				} else {
-					strBuild += labrinthSectorParts.closedSides;
+					strBuild += node.isPath ? labrinthSectorParts.closedSidesP : labrinthSectorParts.closedSides;
 				}
 			}
 		}
