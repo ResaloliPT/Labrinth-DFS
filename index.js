@@ -1,7 +1,7 @@
 //Config
 const GridSize = 10; //n by n Grid
 const drawWaitTime = 20; // Update Wait Timer (in ms)
-const allowCallStackDraw = false; // Set to true to Draw the CallStack
+const allowCallStackDraw = true; // Set to true to Draw the CallStack
 const charset = 0; // 0 or 1 (0:  ■ for unvisited, ▣ for Visited, ☼ for returned | 1: ▓ for unvisited, ▒ for Visited, ░ for returned) Symbols used my maze walker
 
 //Statics
